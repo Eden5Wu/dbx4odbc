@@ -60,6 +60,26 @@
 
 ---
 
+### 📦 透過 Boss 安裝（選用）
+
+使用 [Boss](https://github.com/HashLoad/boss) 可在既有 Delphi 專案中下載並管理整套原始碼：
+
+```powershell
+boss install github.com/Eden5Wu/dbx4odbc
+```
+
+Boss 會將 `source/` 中的四個原生 Runtime 單元加入專案搜尋路徑；應用程式編譯與執行不需要安裝 IDE BPL。`boss.json` 的版本 `4.2026.11` 為配合 Boss 三段式版本格式，對應專案正式版本 `4.2026.11.12`，不改變 Driver 原有版號。
+
+**選用：IDE Data Explorer。** Boss 也會下載 `packages/DataExplorer/`，但不會自動編譯或註冊 BPL。需要 Data Explorer 的使用者，請切換至 Boss 下載的套件根目錄並執行：
+
+```cmd
+packages\DataExplorer\Install.bat -Verify
+```
+
+亦可依 PowerShell 執行原則使用 `packages\DataExplorer\Install.ps1 -Verify`。現有安裝器會自動編譯對應 Delphi 版本的 Win32 BPL，並註冊 `dbxdrivers.ini`；詳見 [Data Explorer 安裝說明](packages/DataExplorer/README_TW.md)。IDE 連線還需有相應的 32 位元 ODBC Driver。安裝後應保留套件目錄及產生的 BPL；若 Boss 更新或移除套件，可能需要重新執行 IDE 安裝器。
+
+---
+
 ## 2. 快速上手（30 秒完成連線）
 
 ### 步驟 1：將原始碼加入專案
