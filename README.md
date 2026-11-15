@@ -60,6 +60,26 @@ This project enforces rigorous engineering discipline, documenting key architect
 
 ---
 
+### 📦 Install with Boss (optional)
+
+[Boss](https://github.com/HashLoad/boss) can install the complete repository as a dependency of an existing Delphi project:
+
+```powershell
+boss install github.com/Eden5Wu/dbx4odbc
+```
+
+Boss adds the four native runtime units from `source/` to the project's source search path. No IDE BPL is required to compile or run applications. The `boss.json` version `4.2026.11` follows Boss's three-part version convention and corresponds to upstream release `4.2026.11.12`; it does not change the driver's version.
+
+**Optional: IDE Data Explorer.** Boss downloads the `packages/DataExplorer/` directory too, but it does not build or register its BPL. If you want Data Explorer support, go to the downloaded package directory and run:
+
+```cmd
+packages\DataExplorer\Install.bat -Verify
+```
+
+Alternatively, run `packages\DataExplorer\Install.ps1 -Verify` from PowerShell with an appropriate script execution policy. The existing installer builds the Delphi-version-specific Win32 BPL and registers it in `dbxdrivers.ini`; see [Data Explorer installation guide](packages/DataExplorer/README.md). The corresponding 32-bit ODBC driver must be installed for IDE connections. Keep the package directory (including the generated BPL) at its installed location while the IDE registration points to it; if Boss updates or removes the package, rerun the IDE installer as needed.
+
+---
+
 ## 2. Quick Start (Get Connected in 30 Seconds)
 
 ### Step 1: Add Source to Your Project
