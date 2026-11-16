@@ -1,4 +1,4 @@
-# Production-ready optional Factory library
+# Optional application Factory library
 
 This directory is **not** a demo. Units here can be added to a Delphi
 application's Search Path in addition to the four mandatory driver source
@@ -100,7 +100,7 @@ does not apply them.
 - `Args` is a one-dimensional Variant array; count is checked against
   prepared DBX parameters. `FillParameters` requires equal list counts;
   invalid arguments raise exceptions rather than silently succeeding.
-  SQL NULL is supported via a `Null` Variant.
+  SQL NULL is supported via a `Null` Variant when the prepared parameter type is known.
 - Transaction scope is controlled using the standard
   `Factory.GetConnection.BeginTransaction / CommitFreeAndNil / RollbackFreeAndNil`
   APIs as available in the target RAD Studio version. The Factory itself

@@ -1,5 +1,5 @@
 {
-  DBX4 ODBC SQL Server Factory (adapted from DBExpress.MSSQL.Factory.pas)
+  DBX4 ODBC Factory Library (adapted from DBExpress.MSSQL.Factory.pas)
   Original source: https://github.com/Eden5Wu/HelperClass
   Copyright (c) 2023 Eden5Wu
   SPDX-License-Identifier: MIT
@@ -146,7 +146,12 @@ var
 begin
   ASQLCommand.Prepare;
   if VarIsEmpty(Args) or VarIsNull(Args) then
+  begin
+    if ASQLCommand.Parameters.Count <> 0 then
+      raise Exception.CreateFmt('SQL parameter count mismatch: expected %d, got 0',
+        [ASQLCommand.Parameters.Count]);
     Exit;
+  end;
   if (not VarIsArray(Args)) or (VarArrayDimCount(Args) <> 1) then
     raise Exception.Create('SQL parameter arguments must be a one-dimensional Variant array');
   LowBound := VarArrayLowBound(Args, 1);

@@ -67,6 +67,27 @@ begin
     Factory.Free;
   end;
 
+  // Ensure the base class also honors explicit property lists and retains the
+  // original connection string (rather than reserializing semicolon tokens).
+  Params := TStringList.Create;
+  try
+    Params.Values[TDBXPropertyNames.DriverName] := 'MSSQL';
+    Params.Values[TDBXOpenOdbcProperties.StrConnectionString] :=
+      'Driver={PostgreSQL Unicode};Server=localhost;Database=testdb;';
+    with TDBX4ODBCFactory.Create(Params) do
+    try
+      AssertEqual(sDbxOpenOdbcDriverName,
+        ConnectionProps[TDBXPropertyNames.DriverName], 'generic params driver');
+      AssertEqual(Params.Values[TDBXOpenOdbcProperties.StrConnectionString],
+        ConnectionProps[TDBXOpenOdbcProperties.StrConnectionString],
+        'generic params connection string');
+    finally
+      Free;
+    end;
+  finally
+    Params.Free;
+  end;
+
   Params := TStringList.Create;
   try
     Params.Values[TDBXPropertyNames.DriverName] := 'MSSQL';

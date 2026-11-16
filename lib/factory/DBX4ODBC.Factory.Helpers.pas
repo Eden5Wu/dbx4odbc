@@ -1,5 +1,5 @@
 {
-  DBX4 ODBC SQL Server Factory (adapted from DBExpress.MSSQL.Factory.pas)
+  DBX4 ODBC Factory Library (adapted from DBExpress.MSSQL.Factory.pas)
   Original source: https://github.com/Eden5Wu/HelperClass
   Copyright (c) 2023 Eden5Wu
   SPDX-License-Identifier: MIT
