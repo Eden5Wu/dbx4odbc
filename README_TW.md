@@ -80,6 +80,21 @@ packages\DataExplorer\Install.bat -Verify
 
 ---
 
+## 可選用的正式 Factory 函式庫
+
+Native DBX4 Driver 繼續保持 `source/` 四個核心單元。
+正式應用程式可另外將 `lib/factory/` 加入 Delphi Search Path：
+`TDBX4ODBCFactory` 提供通用 ODBC 資料庫操作介面；
+`TDBXMSSQLFactory` 只封裝 SQL Server 專屬功能。
+Class Helpers 獨立成單元，避免多個 DBMS Factory 重複宣告。
+Boss 的必要來源目錄仍只有 `source/`，不強制引用 Factory。
+
+- [Factory API、生命週期與移植說明](lib/factory/README.md)
+- [跨 DBMS 使用範例](demos/factory/FactoryUsage.dpr)
+- [離線 Factory 測試](tests/factory/FactorySmoke.dpr)
+
+---
+
 ## 2. 快速上手（30 秒完成連線）
 
 ### 步驟 1：將原始碼加入專案

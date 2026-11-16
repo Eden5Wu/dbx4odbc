@@ -80,6 +80,21 @@ Alternatively, run `packages\DataExplorer\Install.ps1 -Verify` from PowerShell w
 
 ---
 
+## Optional Factory Library (production application layer)
+
+The native driver remains four mandatory source units. For an application-ready
+DBX4 session API, add `lib/factory/` to the Delphi Search Path along with `source/`.
+`TDBX4ODBCFactory` supports any ODBC database; `TDBXMSSQLFactory` is the
+optional SQL Server-specific subclass. DBX command and parameter class helpers
+are kept in a separate, optional unit to avoid duplicate class-helper names.
+Boss continues to expose `source/` as its mandatory entry point.
+
+- [Factory library API, ownership rules, migration notes](lib/factory/README.md)
+- [Cross-DBMS live usage example](demos/factory/FactoryUsage.dpr)
+- [Offline Factory smoke tests](tests/factory/FactorySmoke.dpr)
+
+---
+
 ## 2. Quick Start (Get Connected in 30 Seconds)
 
 ### Step 1: Add Source to Your Project
