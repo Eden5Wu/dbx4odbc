@@ -89,7 +89,7 @@ optional SQL Server-specific subclass. DBX command and parameter class helpers
 are kept in a separate, optional unit to avoid duplicate class-helper names.
 Boss continues to expose `source/` as its mandatory entry point.
 
-- [Factory library API, ownership rules, migration notes](lib/factory/README.md)
+- [Factory library API, ownership rules, migration notes (English)](lib/factory/README.md) · [繁體中文版](lib/factory/README_TW.md)
 - [Cross-DBMS live usage example](demos/factory/FactoryUsage.dpr)
 - [Offline Factory smoke tests](tests/factory/FactorySmoke.dpr)
 
