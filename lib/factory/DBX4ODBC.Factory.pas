@@ -172,7 +172,8 @@ begin
     FConnectionProps[TDBXOpenOdbcProperties.StrConnectionString] := AConnectionString;
     FConnectionFactory := TDBXConnectionFactory.GetConnectionFactory;
   except
-    FConnectionProps.Free;
+    // Delphi invokes Destroy after a constructor exception; prevent double free.
+    FreeAndNil(FConnectionProps);
     raise;
   end;
 end;
@@ -188,7 +189,8 @@ begin
     FConnectionProps[TDBXPropertyNames.DriverName] := sDbxOpenOdbcDriverName;
     FConnectionFactory := TDBXConnectionFactory.GetConnectionFactory;
   except
-    FConnectionProps.Free;
+    // Delphi invokes Destroy after a constructor exception; prevent double free.
+    FreeAndNil(FConnectionProps);
     raise;
   end;
 end;
