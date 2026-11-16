@@ -1,5 +1,7 @@
 # Optional application Factory library
 
+[繁體中文說明文件](README_TW.md)
+
 This directory is **not** a demo. Units here can be added to a Delphi
 application's Search Path in addition to the four mandatory driver source
 units in `source/`. The Factory is optional; applications may use the
