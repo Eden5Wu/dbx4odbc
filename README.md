@@ -495,26 +495,35 @@ All selected columns must be eligible for binding. Selecting a LOB column sends 
 
 ```text
 dbx4odbc/
-├── source/               # Pure Pascal DBX4 core driver source (No external DLL)
-│   ├── DbxOpenOdbcDriver.pas  # Driver registration, TDBXDriver & TDBXConnection classes
-│   ├── DbxOpenOdbcDialects.pas# DBMS dialect strategy & vendor quirk normalization
-│   ├── DbxOpenOdbcCore.pas    # Command, statement, parameter, metadata & cursor engine
-│   └── OdbcApi.pas            # Direct Windows ODBC 3.x API bindings (odbc32.dll)
-├── ini/                  # Optional IDE configuration templates
-│   ├── dbxdrivers.ini         # Driver registration settings template
-│   └── dbxconnections.ini     # Connection profiles template
-├── packages/             # Optional IDE Data Explorer integration packages
-│   └── DataExplorer/          # Runtime package project & build scripts
-├── docs/                 # Architectural decision records & benchmark reports
-│   ├── design/           # ADR-001 & ADR-002 Architecture Decision Records (Bilingual)
-│   └── benchmarks/       # 2026 Multi-Engine Benchmark Reports (EN & TW)
-├── benchmarks/           # Automated multi-engine benchmark suite (BenchDataEngines)
-├── demos/                # Connection units & test demos
-│   └── connections/           # Pre-built sample connection units
-├── tests/                # Automated verification suites
-│   ├── mvp_test/              # CLI / IDE test suite (validates DBX4 without DB)
-│   └── runtime_test/          # Full regression suite against live SQL Server
-├── ChangesLog.Txt        # Version change history
-├── README.md             # English documentation
-└── README_TW.md          # Traditional Chinese documentation
+├── source/                       # DBX4 ODBC driver runtime
+│   ├── DbxOpenOdbcDriver.pas     # Driver registration and DBX interfaces
+│   ├── DbxOpenOdbcCore.pas       # ODBC connections, statements, and row fetching
+│   ├── DbxOpenOdbcDialects.pas   # DBMS-specific behavior
+│   └── OdbcApi.pas               # Windows ODBC API bindings
+├── lib/
+│   └── factory/                  # Optional Factory library for ODBC and SQL Server
+├── packages/                     # Optional Delphi IDE integration
+│   ├── DataExplorer/             # Data Explorer package and installer
+│   ├── DataExplorerD12Test/      # Delphi 12 package loading tests
+│   └── DataExplorerProviderTest/ # Data Explorer provider tests
+├── demos/
+│   ├── connections/              # Sample connection settings for different DBMSs
+│   ├── dbms/                     # Demo projects grouped by DBMS
+│   └── factory/                  # Example of using the Factory library
+├── tests/
+│   ├── factory/                  # Factory smoke tests
+│   ├── metadata_test/            # Database metadata tests
+│   ├── mvp_test/                 # Basic DBX4 API and dataset tests
+│   ├── pooling_test/             # ODBC connection pooling tests
+│   └── runtime_test/             # SQL Server runtime regression tests
+├── benchmarks/                   # Benchmark program and sample configuration
+├── docs/                         # Project documentation and test reports
+│   ├── design/                   # Architecture decision records (ADRs)
+│   ├── issues/                   # Issue write-ups
+│   └── benchmarks/               # Benchmark reports
+├── ini/                          # Driver registration and connection templates
+├── boss.json                     # Boss package manifest
+├── ChangesLog.Txt                # Version history
+├── README.md                     # English guide
+└── README_TW.md                  # Traditional Chinese guide
 ```

@@ -494,26 +494,35 @@ ODBC Driver 18 預設啟用加密。在 SQL Server 相容性路徑上，若省�
 
 ```text
 dbx4odbc/
-├── source/               # 純 Pascal DBX4 核心驅動原始碼 (零外部 DLL 依賴)
-│   ├── DbxOpenOdbcDriver.pas  # 驅動註冊單元與 TDBXDriver / TDBXConnection 實作
-│   ├── DbxOpenOdbcDialects.pas# DBMS 方言策略 (Dialect) 與引擎相容性適配
-│   ├── DbxOpenOdbcCore.pas    # 指令、結構描述、游標、參數與修剪引擎
-│   └── OdbcApi.pas            # 原生 Windows ODBC 3.x API 綁定單元 (odbc32.dll)
-├── ini/                  # IDE 連線設定範本 (選用)
-│   ├── dbxdrivers.ini         # 驅動註冊設定範本
-│   └── dbxconnections.ini     # 各 DBMS 連線設定範本
-├── packages/             # IDE 整合套件 (選用)
-│   └── DataExplorer/          # Data Explorer 整合套件工程與說明
-├── docs/                 # 架構決策記錄 (ADR) 與效能評測報告
-│   ├── design/           # ADR-001 與 ADR-002 架構決策記錄 (中英雙語)
-│   └── benchmarks/       # 2026 年度五大引擎評測報告 (中英雙語)
-├── benchmarks/           # 自動化五大引擎基準測試套件 (BenchDataEngines)
-├── demos/                # 各資料庫連線範例
-│   └── connections/           # 各 DBMS 預製連線設定範例單元
-├── tests/                # 自動化回歸測試套件
-│   ├── mvp_test/              # CLI / IDE 驗證套件 (免連線真實 DB 即可驗證核心架構)
-│   └── runtime_test/          # 針對真實 SQL Server 的全套回歸測試
-├── ChangesLog.Txt        # 歷史版本異動紀錄 (英文)
-├── README.md             # 英文版說明文檔
-└── README_TW.md          # 繁體中文版說明文檔
+├── source/                       # DBX4 ODBC 驅動程式
+│   ├── DbxOpenOdbcDriver.pas     # 驅動註冊與 DBX 介面
+│   ├── DbxOpenOdbcCore.pas       # ODBC 連線、指令與資料列讀取
+│   ├── DbxOpenOdbcDialects.pas   # 各資料庫的相容性處理
+│   └── OdbcApi.pas               # Windows ODBC API 介面
+├── lib/
+│   └── factory/                  # 選用的通用 ODBC 與 SQL Server Factory 函式庫
+├── packages/                     # 選用的 Delphi IDE 整合
+│   ├── DataExplorer/             # Data Explorer 套件與安裝工具
+│   ├── DataExplorerD12Test/      # Delphi 12 套件載入測試
+│   └── DataExplorerProviderTest/ # Data Explorer Provider 測試
+├── demos/
+│   ├── connections/              # 各資料庫的連線範例
+│   ├── dbms/                     # 依資料庫分類的示範專案
+│   └── factory/                  # Factory 函式庫使用範例
+├── tests/
+│   ├── factory/                  # Factory 基本功能測試
+│   ├── metadata_test/            # 資料庫中繼資料測試
+│   ├── mvp_test/                 # DBX4 API 與資料集基本測試
+│   ├── pooling_test/             # ODBC 連線池測試
+│   └── runtime_test/             # SQL Server 執行期回歸測試
+├── benchmarks/                   # 效能測試程式與設定範本
+├── docs/                         # 專案文件與測試報告
+│   ├── design/                   # 架構決策記錄（ADR）
+│   ├── issues/                   # 議題紀錄
+│   └── benchmarks/               # 效能測試報告
+├── ini/                          # 驅動註冊與連線設定範本
+├── boss.json                     # Boss 套件設定
+├── ChangesLog.Txt                # 版本異動紀錄
+├── README.md                     # 英文說明
+└── README_TW.md                  # 繁體中文說明
 ```
