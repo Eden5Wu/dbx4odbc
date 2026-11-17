@@ -5,6 +5,7 @@ program FactorySmoke;
 uses
   System.SysUtils,
   System.Classes,
+  System.Variants,
   Data.DBXCommon,
   OdbcApi in '..\..\source\OdbcApi.pas',
   DbxOpenOdbcDialects in '..\..\source\DbxOpenOdbcDialects.pas',
@@ -108,11 +109,47 @@ begin
   end;
 end;
 
+procedure TestLiveFactory(const ConnectionString: string);
+var
+  Factory: TDBX4ODBCFactory;
+  Command: TDBXCommand;
+  Reader: TDBXReader;
+begin
+  Factory := TDBX4ODBCFactory.Create(ConnectionString);
+  try
+    Command := Factory.Prepare('SELECT CAST(? AS integer) AS test_value');
+    try
+      Reader := Factory.ExecuteQuery(Command, VarArrayOf([42]));
+      try
+        if (Reader = nil) or not Reader.Next then
+          raise Exception.Create('The parameterized query returned no row');
+        if Reader.Value[0].GetInt32 <> 42 then
+          raise Exception.Create('The parameterized query returned an unexpected value');
+        if Reader.Next then
+          raise Exception.Create('The parameterized query returned extra rows');
+      finally
+        Reader.Free;
+      end;
+    finally
+      Command.Free;
+    end;
+  finally
+    Factory.Free;
+  end;
+  Writeln('FactorySmoke: PASS (live parameterized query)');
+end;
+
+var
+  ConnectionString: string;
+
 begin
   try
     TestGenericFactory;
     TestMsSqlFactory;
     Writeln('FactorySmoke: PASS (offline constructor/property checks)');
+    ConnectionString := GetEnvironmentVariable('DBXOODBC_FACTORY_TEST_CONNECTION');
+    if ConnectionString <> '' then
+      TestLiveFactory(ConnectionString);
   except
     on E: Exception do
     begin

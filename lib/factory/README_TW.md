@@ -145,15 +145,13 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 - **執行 SQL 字串時**：`Execute(SQL)` 與 `Execute(SQL, Args)` 會自行建立與釋放 Command；傳入既有 Command 的多載則不接管所有權。
 - **執行緒模型**：一個 Factory 實例代表一個 Session，不視為可供多執行緒同時共用的 Singleton。不同執行緒各自建立 Factory 實例。
 - **交易控制**：Factory 不會隱含開始、Commit 或 Rollback 交易；由應用程式透過 `GetConnection` 取得 DBX Connection，再使用目標 Delphi 版本提供的交易 API 控制。
-- **Connection Pooling**：由原生 OODBC Driver 的 `Pooling` 設定處理；Factory 不重複實作另一套連線池。
+- **連線池**。dbx4odbc 不支援 Delphi 原生 `DBXPool`。請勿設定 `DelegateConnection=DBXPool`。需要池化時請設 `Pooling=True`，並在 Windows ODBC 資料來源管理員設定驅動。重用的 PostgreSQL session 可能保留暫存表和 session 設定，請在關閉連線前清理應用程式建立的狀態。
 
 ## 6. Demo、測試與驗證狀態
+
+非 SQL Server 的連線請明確指定 `Driver=` 或 `DSN=`。若連線字串包含其他鍵值但省略這兩項，驅動會選擇 SQL Server ODBC Driver。
 
 | 檔案 | 用途 |
 | --- | --- |
 | [`demos/factory/FactoryUsage.dpr`](../../demos/factory/FactoryUsage.dpr) | 接受 ODBC ConnectionString 與 SQL，展示跨 DBMS 查詢 |
-| [`tests/factory/FactorySmoke.dpr`](../../tests/factory/FactorySmoke.dpr) | 離線檢查通用／MSSQL Factory 建構與設定值，不需要連線資料庫 |
-
-**目前已完成原始碼整理、GitHub 提交與靜態結構檢查；尚未完成 Delphi Win32／Win64 編譯、Smoke Test 實際執行及跨 DBMS 連線整合測試。**
-
-Factory 目前仍在 Pull Request 階段，相關項目應完成驗證後再合併至正式分支。
+| [`tests/factory/FactorySmoke.dpr`](../../tests/factory/FactorySmoke.dpr) | 離線檢查通用／MSSQL Factory 建構與設定值。設定 `DBXOODBC_FACTORY_TEST_CONNECTION` 後，也會執行唯讀參數查詢。 |

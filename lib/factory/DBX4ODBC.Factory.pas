@@ -144,7 +144,8 @@ procedure FillParams(ASQLCommand: TDBXCommand; const Args: OleVariant);
 var
   LowBound, HighBound, I: Integer;
 begin
-  ASQLCommand.Prepare;
+  if not ASQLCommand.IsPrepared then
+    ASQLCommand.Prepare;
   if VarIsEmpty(Args) or VarIsNull(Args) then
   begin
     if ASQLCommand.Parameters.Count <> 0 then

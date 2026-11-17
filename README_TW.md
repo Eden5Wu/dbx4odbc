@@ -35,7 +35,7 @@
 - **原生驅動連線池 (Native Connection Pooling)**：直接對接 Windows ODBC Driver Manager 原生連線池 (`Pooling=True`)，實現 5.6 倍連線回收加速 (ADR-003) 與單機 570+ QPS 吞吐，無狀態中間層隨開即用。
 - **多陳述式 Batch SQL 游標自主防禦**：智慧略過多語句 SQL 中的非資料列輸出（如 `DECLARE`、`SET` 等變數宣告），徹底根絕 "Cursor not returned" 錯誤，無需人工補加 `SET NOCOUNT ON`。
 - **無縫相容 ADO/OLE DB 連線字串**：若您正著手將舊版 ADO (`TADOConnection`) 程式遷移至 dbExpress，您可以直接傳入現有的 ADO 連線字串，驅動程式內建的智慧轉譯器會自動轉換，完全免改字串。
-- **驅動世代自動偵測與現代安全性**：自動偵測並綁定客戶端電腦上已安裝的最新版 SQL Server 驅動（ODBC Driver 18, 17, 13, 11 或 SQL Native Client），內建 SSL 憑證防呆機制（`TrustServerCertificate=yes`）與高速 TCP/IP 連線。
+- **SQL Server 驅動自動偵測**會從客戶端已安裝的驅動中選擇。憑證驗證設定請見本頁 TLS 常見問題。
 
 ---
 
@@ -54,7 +54,7 @@
 
 ### 🏛️ 架構決策紀錄 (Architecture Decision Records, ADR)
 本專案秉持極致嚴謹的工程紀律，針對各項核心架構探索與效能評估建立正式 ADR 紀錄：
-- 📄 **[ADR-001: 資料列讀取架構決策 — SQLBindCol 與循序 SQLGetData](docs/design/ADR-001-row-fetch-strategy_TW.md)** ([English](docs/design/ADR-001-row-fetch-strategy.md))：深入探測 ODBC 驅動擴充遮罩（`SQL_GETDATA_EXTENSIONS`），確立維持循序 `PreFetchRow` 以確保跨資料庫 100% 絕對穩定與零游標狀態錯誤。
+- 所有欄位都符合條件的有界結果集會使用區塊繫結。結果集含 LOB 或不符合繫結條件的欄位時，使用循序 `PreFetchRow`。 [ADR-001](docs/design/ADR-001-row-fetch-strategy_TW.md) · [English](docs/design/ADR-001-row-fetch-strategy.md)
 - 📄 **[ADR-002: 欄位值轉移與專用 ByteReader 優化策略](docs/design/ADR-002-bytereader-strategy_TW.md)** ([English](docs/design/ADR-002-bytereader-strategy.md))：評估專用 ByteReader 與 `System.Move` 替代原生迴圈，在 33,398 行摘要資料與 319.5 MB 圖片比對中通過 100% 正確性驗證，但實測短字串微架構開銷與 ClientDataSet 傳輸瓶頸使收益未能重現，確立維持 Delphi 原生通用實作。
 - 📄 **[ADR-003: 採用 Windows ODBC Driver Manager 原生連線池架構決策](docs/design/ADR-003-native-connection-pooling_TW.md)** ([English](docs/design/ADR-003-native-connection-pooling.md))：透過同基準實測對比自建應用層連線池與 Windows ODBC Driver Manager 原生連線池（`SQL_CP_ONE_PER_HENV` + `SQL_CP_STRICT_MATCH`），實現 5.6 倍連線加速（`3.221 ms` vs `17.967 ms`）、16 執行緒 572.3 QPS 高吞吐與零額外網路往返之 TDS `fResetConnection` 會話隔離，同時維持 4 個純 Pascal 單元的極簡架構。
 
@@ -335,8 +335,7 @@ end;
   ```
 
 > [!WARNING]
-> **切勿與 `DelegateConnection=DBXPool` 混用**：
-> 使用 `dbx4odbc` 時，請勿設定 `DelegateConnection=DBXPool`。Embarcadero 原廠的 `Data.DBXPool.pas`（`TDBXPool.IsEqual`）僅比對 `ConnectionName`/`UserName`（或 `Database`）而忽略 `ConnectionString`，在多資料庫 ERP 環境下會引發跨庫錯位風險。請直接設定 `Pooling=True` 交由 `dbx4odbc` 底層的 Windows ODBC Driver Manager 原生連線池處理。
+> **dbx4odbc 不支援 Delphi 原生 DBXPool。** 請勿設定 `DelegateConnection=DBXPool`。需要池化時，請設 `Pooling=True`，並在 Windows ODBC 資料來源管理員設定已安裝的驅動。
 
 > [!NOTE]
 > **多資料庫池化驗證狀態與 `CPTimeout` 條件**：
@@ -346,6 +345,8 @@ end;
 >    - **PostgreSQL (`psqlodbc35w.dll`) 與 Firebird (`FirebirdODBC.dll`) — 僅支援實體複用與 DBX 交易回滾**：可正常複用實體連線並回滾未提交之 `TSQLConnection.BeginTransaction` 交易，但驅動本身不會在池化複用時自動發送 `DISCARD ALL`（PostgreSQL）或 `ALTER SESSION RESET`（Firebird）。若應用程式在 PostgreSQL 或 Firebird 上建立暫存表、修改會話變數或直接執行未經 DBX API 之原生 `BEGIN;`，請於關閉連線前顯式清理。
 
 ---
+
+設定 PostgreSQL 測試 DSN 後，可執行 `TestMultiDbmsPooling.exe --postgres-session`。測試比對後端 PID，並檢查同一 session 是否保留暫存表。退出碼 2 表示未驗證重用，退出碼 1 表示測試失敗。暫存表消失只能證明當下表不存在。
 
 ## 5. 通用資料型別映射規範 (Data Type Mapping Reference)
 
@@ -478,10 +479,11 @@ end;
 - **解答**：這是因為您的 `.dfm` 檔案建立了靜態 `TStringField` 欄位定義。只要在連線參數加入 `SQLConn.Params.Values['UseUnicode'] := 'False';`，驅動便會將 `nchar`/`nvarchar` 映射為 `TStringField`，`text`/`varchar(max)`/`ntext` 映射為 `TMemoField`。
 
 #### Q3：連線至 `ODBC Driver 18 for SQL Server` 時出現 SSL 憑證驗證失敗？
-- **解答**：微軟在 Driver 18+ 起預設強制開啟 SSL 憑證驗證。本驅動程式已內建智慧防呆，若您未特別配置 SSL 憑證，連線時會自動補上 `TrustServerCertificate=yes;`，避免連線失敗。
+ODBC Driver 18 預設啟用加密。在 SQL Server 相容性路徑上，若省略該選項，dbx4odbc 會補上 `TrustServerCertificate=yes`，使一般加密連線略過伺服器憑證驗證。正式環境請部署可信任的伺服器憑證，並明確設定 `Encrypt=yes;TrustServerCertificate=no;`。 [Microsoft ODBC 連線設定](https://learn.microsoft.com/en-us/sql/connect/odbc/dsn-connection-string-attribute#encrypt)
 
-#### Q5：為什麼 dbxoodbc 使用循序 `PreFetchRow`（`SQLGetData`）而非全面 `SQLBindCol`？
-- **解答**：請參閱 [ADR-001: Row Fetch 架構決策 — SQLBindCol 與循序 SQLGetData 評估報告](docs/design/ADR-001-row-fetch-strategy_TW.md)，內含微軟 ODBC 驅動擴充規範探測（`SQL_GD_ANY_COLUMN = FALSE`）、跨驅動架構對比與巨量 BLOB 實測基準數據。
+#### Q5：Adaptive Hybrid Fetch 何時使用區塊繫結？
+
+結果集的所有欄位都必須符合繫結條件。只要查詢選入 LOB 欄位，即使欄值都是 NULL，整個結果集仍採循序 `SQLGetData`。 [ADR-001](docs/design/ADR-001-row-fetch-strategy_TW.md)
 
 #### Q4：我需要安裝或部署任何 BPL 套件嗎？
 - **解答**：**完全不需要。** 在專案中直接引用 `source/` 的 4 個檔案即可完成 100% 執行期連線。目錄下的 `packages/DataExplorer/` 僅供希望在 IDE 視窗的 Data Explorer 直接檢視資料表結構的開發者選用。

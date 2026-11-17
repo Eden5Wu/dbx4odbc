@@ -35,7 +35,7 @@ If you are maintaining or modernizing Delphi database applications (such as ERP,
 - **Native Driver Manager Connection Pooling**: Seamlessly reuse connections with built-in Windows ODBC Driver Manager pooling (`Pooling=True`), achieving 5.6x faster connection recycling (ADR-003) and over 570 QPS for stateless mid-tier applications.
 - **Autonomous Multi-Statement Batch SQL Defense**: Intelligently advances past non-row results in complex batch SQL (e.g. `DECLARE`, `SET`), eliminating "Cursor not returned" errors out of the box without requiring manual `SET NOCOUNT ON`.
 - **Drop-in ADO/OLE DB Replacement**: If you are migrating legacy ADO (`TADOConnection`) code to dbExpress, you can pass your existing ADO connection string directly. The driver translates it automatically.
-- **Automatic Driver Detection & Modern Security**: Auto-detects and binds to the newest installed SQL Server ODBC driver on the client PC (ODBC Driver 18, 17, 13, 11, or SQL Native Client), with automatic SSL trust handling (`TrustServerCertificate=yes`) and fast TCP/IP.
+- **SQL Server driver detection** automatically selects an installed SQL Server ODBC driver. See the TLS FAQ for certificate validation settings.
 
 ---
 
@@ -54,7 +54,7 @@ In rigorous empirical benchmarks against **FireDAC**, **ADO / dbGo**, **EMBT DBX
 
 ### 🏛️ Architecture Decision Records (ADR)
 This project enforces rigorous engineering discipline, documenting key architectural evaluations and decisions in formal ADRs:
-- 📄 **[ADR-001: Row Fetch Architecture — SQLBindCol vs Sequential SQLGetData](docs/design/ADR-001-row-fetch-strategy.md)** ([繁體中文](docs/design/ADR-001-row-fetch-strategy_TW.md)): Live probing of ODBC Driver Manager extension masks (`SQL_GETDATA_EXTENSIONS`), confirming that sequential `PreFetchRow` is retained for 100% cross-DBMS stability and zero cursor state errors.
+- Eligible bounded result sets use block binding. Results with LOBs or ineligible columns use sequential `PreFetchRow`. [ADR-001](docs/design/ADR-001-row-fetch-strategy.md) · [繁體中文](docs/design/ADR-001-row-fetch-strategy_TW.md)
 - 📄 **[ADR-002: Field Value Transfer & Specialized ByteReader Strategy](docs/design/ADR-002-bytereader-strategy.md)** ([繁體中文](docs/design/ADR-002-bytereader-strategy_TW.md)): Evaluated a specialized ByteReader with `System.Move` block copy, passing 100% correctness on 33,398 digest rows and 319.5 MB images. Due to short-string microarchitectural overhead and ClientDataSet pipeline constraints, performance gains were not reproducible, deciding to retain Delphi's default implementation.
 - 📄 **[ADR-003: Windows ODBC Driver Manager Native Connection Pooling Strategy](docs/design/ADR-003-native-connection-pooling.md)** ([繁體中文](docs/design/ADR-003-native-connection-pooling_TW.md)): Side-by-side audit and empirical benchmark comparing custom application-level pooling against Windows ODBC Driver Manager pooling (`SQL_CP_ONE_PER_HENV` + `SQL_CP_STRICT_MATCH`), achieving 5.6x faster connection cycles (`3.221 ms` vs `17.967 ms`), 572.3 QPS at 16 threads, and zero-round-trip TDS `fResetConnection` session isolation while preserving the 4-unit pure-Pascal footprint.
 
@@ -335,8 +335,7 @@ You can configure extended parameters either as **independent properties** in `S
   ```
 
 > [!WARNING]
-> **Do NOT Combine with `DelegateConnection=DBXPool`**:
-> Do not set `DelegateConnection=DBXPool` when using `dbx4odbc`. Embarcadero's `Data.DBXPool.pas` (`TDBXPool.IsEqual`) compares only `ConnectionName`/`UserName` (or `Database`), ignoring `ConnectionString`, which causes cross-database connection misrouting in multi-database ERP environments. Simply set `Pooling=True` directly on `dbx4odbc`.
+> **Delphi's native DBXPool is unsupported.** Leave `DelegateConnection=DBXPool` unset. For pooling, set `Pooling=True` and configure the installed driver in Windows ODBC Data Source Administrator.
 
 > [!NOTE]
 > **Multi-DBMS Pooling Verification & `CPTimeout` Requirements**:
@@ -346,6 +345,12 @@ You can configure extended parameters either as **independent properties** in `S
 >    - **PostgreSQL (`psqlodbc35w.dll`) & Firebird (`FirebirdODBC.dll`) — Physical Reuse & DBX Transaction Rollback Only**: Reuse physical connections and roll back uncommitted `TSQLConnection.BeginTransaction` transactions cleanly, but do not automatically execute `DISCARD ALL` (PostgreSQL) or `ALTER SESSION RESET` (Firebird) on pool reuse. Applications creating session-scoped temporary tables, mutating session variables, or issuing raw SQL `BEGIN;` outside DBX transaction APIs on PostgreSQL/Firebird must clean them up explicitly before disconnecting.
 
 ---
+
+To check PostgreSQL session reuse, run `TestMultiDbmsPooling.exe --postgres-session`
+with the test DSN configured. The test compares backend PIDs and checks whether
+a temporary table survives on the same session. Exit code 2 means reuse was
+unverified, and exit code 1 means the check failed. An absent table does not
+establish that the driver ran `DISCARD ALL`.
 
 ## 5. Universal Data Type Mapping Reference
 
@@ -478,10 +483,11 @@ end;
 - **Answer**: Your `.dfm` has persistent `TStringField` definitions. Set `SQLConn.Params.Values['UseUnicode'] := 'False';`. The driver will map `nchar`/`nvarchar` columns to `TStringField`, and `text`/`varchar(max)`/`ntext` to `TMemoField`.
 
 #### Q3: Why does `ODBC Driver 18 for SQL Server` report SSL certificate errors?
-- **Answer**: Microsoft introduced mandatory SSL encryption in ODBC Driver 18+. Open DBX4 ODBC Driver Remastered automatically appends `TrustServerCertificate=yes;` if you haven't configured a formal SSL certificate, avoiding connection failures out of the box.
+ODBC Driver 18 defaults to encryption. On its SQL Server compatibility paths, dbx4odbc adds `TrustServerCertificate=yes` when the option is omitted. This bypasses server certificate validation for ordinary encrypted connections. For production, configure a trusted server certificate and explicitly set `Encrypt=yes;TrustServerCertificate=no;`. [Microsoft ODBC connection settings](https://learn.microsoft.com/en-us/sql/connect/odbc/dsn-connection-string-attribute#encrypt)
 
-#### Q5: Why does dbxoodbc use sequential `PreFetchRow` (`SQLGetData`) instead of `SQLBindCol`?
-- **Answer**: See [ADR-001: Row Fetch Architecture - SQLBindCol vs Sequential SQLGetData](docs/design/ADR-001-row-fetch-strategy.md) for full empirical benchmarks, driver specification probing (`SQL_GD_ANY_COLUMN = FALSE`), and cross-driver analysis.
+#### Q5: When does Adaptive Hybrid Fetch use block binding?
+
+All selected columns must be eligible for binding. Selecting a LOB column sends the entire result set through sequential `SQLGetData`, even when the LOB values are NULL. [ADR-001](docs/design/ADR-001-row-fetch-strategy.md)
 
 #### Q4: Do I need to install or register any BPL packages?
 - **Answer**: **No.** Including the 4 source files in your project is 100% sufficient for all runtime applications. Optional BPL packages under `packages/DataExplorer/` are solely for viewing tables inside the IDE's Data Explorer window at design time.

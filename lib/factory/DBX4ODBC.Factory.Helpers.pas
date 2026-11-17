@@ -30,6 +30,7 @@ interface
 
 uses
   Data.DBXCommon,
+  Data.DBXPlatform,
   System.SysUtils,
   System.Classes,
   Data.SqlTimSt;

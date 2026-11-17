@@ -107,17 +107,23 @@ does not apply them.
   `Factory.GetConnection.BeginTransaction / CommitFreeAndNil / RollbackFreeAndNil`
   APIs as available in the target RAD Studio version. The Factory itself
   does not implicitly start or commit transactions.
-- Native ODBC pooling remains the responsibility of the driver's
-  `Pooling` setting; the Factory does not maintain a second pool.
+- Delphi's native `DBXPool` is unsupported. Leave `DelegateConnection=DBXPool`
+  unset. To pool connections, use `Pooling=True` and configure the driver in
+  Windows ODBC Data Source Administrator. A reused PostgreSQL session can
+  retain temporary tables and session settings. Clean up application-owned
+  session state before closing the connection. [Pooling setup](../../README.md#47-pooling-windows-odbc-driver-manager-native-connection-pooling)
 
 ## Installation and tests
+
+For non-SQL Server DBMSs, specify `Driver=` or `DSN=` explicitly. A connection
+string containing other keys without either one selects a SQL Server ODBC
+driver.
 
 Add `source/` and `lib/factory/` to the project Search Path (or include
 specific `.pas` files in the project). Boss's `mainsrc` remains `source/`
 so the four-unit driver is still lightweight; `lib/factory/` is optional.
 
-- `tests/factory/FactorySmoke.dpr`: compile-time and offline constructor/
-  property tests, no database or driver connection needed.
+- `tests/factory/FactorySmoke.dpr` runs offline constructor and property checks.
+  Set `DBXOODBC_FACTORY_TEST_CONNECTION` in the test process to also run a live,
+  read-only parameterized query.
 - `demos/factory/FactoryUsage.dpr`: live generic SQL execution example.
-- Win32, Win64 and live database regression results must be collected
-  separately; publishing the units does **not** imply that those tests passed.
