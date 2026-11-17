@@ -342,11 +342,11 @@ end;
 > 1. **系統登錄檔 `CPTimeout`**：Windows `odbc32.dll` 僅針對在系統登錄檔 `HKLM\SOFTWARE\ODBC\ODBCINST.INI\<DriverName>`（32 位元為 `WOW6432Node`）中設有 `CPTimeout > 0` 的驅動程式啟用連線池（微軟官方 SQL Server 驅動預設為 `CPTimeout=60`）。第三方驅動請確認已設定 `CPTimeout`，否則 `odbc32.dll` 會安全退回一般無池化連線。
 > 2. **各資料庫驅動之會話狀態重置 (Session Reset) 實測差異**：
 >    - **SQL Server (`msodbcsql17.dll`) 與 MariaDB/MySQL (`myodbc8w.dll` 8.0+) — 完整自動重置 (PASS)**：於連線池複用時分別透過協定層 `fResetConnection` 與 `COM_RESET_CONNECTION` 自動回滾未提交交易、刪除暫存表、清空會話變數並還原預設隔離層級。
->    - **PostgreSQL (`psqlodbc35w.dll`) 與 Firebird (`FirebirdODBC.dll`) — 僅支援實體複用與 DBX 交易回滾**：可正常複用實體連線並回滾未提交之 `TSQLConnection.BeginTransaction` 交易，但驅動本身不會在池化複用時自動發送 `DISCARD ALL`（PostgreSQL）或 `ALTER SESSION RESET`（Firebird）。若應用程式在 PostgreSQL 或 Firebird 上建立暫存表、修改會話變數或直接執行未經 DBX API 之原生 `BEGIN;`，請於關閉連線前顯式清理。
+>    - **PostgreSQL 和 Firebird** 可以重用連線，也能回滾未提交的 DBX 交易。下一次借到同一條連線時，上一個使用者建立的暫存表或改過的設定可能還在。關閉連線前，請刪除用完的暫存表、恢復改過的設定，並結束用 SQL 開啟的交易。
 
 ---
 
-設定 PostgreSQL 測試 DSN 後，可執行 `TestMultiDbmsPooling.exe --postgres-session`。測試比對後端 PID，並檢查同一 session 是否保留暫存表。退出碼 2 表示未驗證重用，退出碼 1 表示測試失敗。暫存表消失只能證明當下表不存在。
+我們在 PostgreSQL 建立一張暫存表後關閉連線。重新借到同一條連線時，暫存表還在。
 
 ## 5. 通用資料型別映射規範 (Data Type Mapping Reference)
 

@@ -109,9 +109,10 @@ does not apply them.
   does not implicitly start or commit transactions.
 - Delphi's native `DBXPool` is unsupported. Leave `DelegateConnection=DBXPool`
   unset. To pool connections, use `Pooling=True` and configure the driver in
-  Windows ODBC Data Source Administrator. A reused PostgreSQL session can
-  retain temporary tables and session settings. Clean up application-owned
-  session state before closing the connection. [Pooling setup](../../README.md#47-pooling-windows-odbc-driver-manager-native-connection-pooling)
+  Windows ODBC Data Source Administrator. On PostgreSQL, the next borrower
+  may get the same connection with your temporary tables and settings still
+  there. Drop the tables and restore any settings you changed before closing
+  the connection. [Pooling setup](../../README.md#47-pooling-windows-odbc-driver-manager-native-connection-pooling)
 
 ## Installation and tests
 

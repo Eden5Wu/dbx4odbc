@@ -145,7 +145,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 - **執行 SQL 字串時**：`Execute(SQL)` 與 `Execute(SQL, Args)` 會自行建立與釋放 Command；傳入既有 Command 的多載則不接管所有權。
 - **執行緒模型**：一個 Factory 實例代表一個 Session，不視為可供多執行緒同時共用的 Singleton。不同執行緒各自建立 Factory 實例。
 - **交易控制**：Factory 不會隱含開始、Commit 或 Rollback 交易；由應用程式透過 `GetConnection` 取得 DBX Connection，再使用目標 Delphi 版本提供的交易 API 控制。
-- **連線池**。dbx4odbc 不支援 Delphi 原生 `DBXPool`。請勿設定 `DelegateConnection=DBXPool`。需要池化時請設 `Pooling=True`，並在 Windows ODBC 資料來源管理員設定驅動。重用的 PostgreSQL session 可能保留暫存表和 session 設定，請在關閉連線前清理應用程式建立的狀態。
+- **連線池**。dbx4odbc 不支援 Delphi 原生 `DBXPool`。請勿設定 `DelegateConnection=DBXPool`。需要池化時請設 `Pooling=True`，並在 Windows ODBC 資料來源管理員設定驅動。PostgreSQL 的下一個使用者可能借到同一條連線，看到你留下的暫存表或設定。關閉連線前，請刪除用完的暫存表，並恢復改過的設定。
 
 ## 6. Demo、測試與驗證狀態
 

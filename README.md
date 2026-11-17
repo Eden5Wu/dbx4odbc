@@ -342,15 +342,12 @@ You can configure extended parameters either as **independent properties** in `S
 > 1. **System Registry `CPTimeout`**: Windows `odbc32.dll` pools an ODBC driver only when its system registry key `HKLM\SOFTWARE\ODBC\ODBCINST.INI\<DriverName>` (or `WOW6432Node` for Win32) defines `CPTimeout > 0` (configured by default to `60` for Microsoft SQL Server ODBC drivers). For third-party drivers, ensure `CPTimeout` is enabled via the Windows *ODBC Data Source Administrator -> Connection Pooling* tab; otherwise `odbc32.dll` safely falls back to unpooled connections.
 > 2. **Driver-Specific Session Reset Behavior**:
 >    - **SQL Server (`msodbcsql17.dll`) & MariaDB/MySQL (`myodbc8w.dll` 8.0+) — Full Session Reset (PASS)**: Automatically roll back open transactions, drop temporary tables, clear session variables, and restore default isolation levels on pool reuse via protocol-level reset (`fResetConnection` / `COM_RESET_CONNECTION`).
->    - **PostgreSQL (`psqlodbc35w.dll`) & Firebird (`FirebirdODBC.dll`) — Physical Reuse & DBX Transaction Rollback Only**: Reuse physical connections and roll back uncommitted `TSQLConnection.BeginTransaction` transactions cleanly, but do not automatically execute `DISCARD ALL` (PostgreSQL) or `ALTER SESSION RESET` (Firebird) on pool reuse. Applications creating session-scoped temporary tables, mutating session variables, or issuing raw SQL `BEGIN;` outside DBX transaction APIs on PostgreSQL/Firebird must clean them up explicitly before disconnecting.
+>    - **PostgreSQL and Firebird** can reuse connections and roll back uncommitted DBX transactions. The next borrower may still see temporary tables or settings left by the previous borrower. Before closing the connection, drop any temporary tables you created, restore any session settings you changed, and finish transactions you started with SQL.
 
 ---
 
-To check PostgreSQL session reuse, run `TestMultiDbmsPooling.exe --postgres-session`
-with the test DSN configured. The test compares backend PIDs and checks whether
-a temporary table survives on the same session. Exit code 2 means reuse was
-unverified, and exit code 1 means the check failed. An absent table does not
-establish that the driver ran `DISCARD ALL`.
+In our PostgreSQL test, we created a temporary table, closed the connection,
+then borrowed the same connection again. The table was still there.
 
 ## 5. Universal Data Type Mapping Reference
 
