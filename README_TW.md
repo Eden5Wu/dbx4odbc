@@ -10,7 +10,7 @@
 
 - **驅動名稱 (Driver Name)**：`DbxOpenOdbc`（或 `OpenOdbc`）
 - **產品名稱**：Open DBX4 ODBC Driver Remastered
-- **版本 (Version)**：`4.2026.11.12`
+- **版本 (Version)**：`4.2611.9`
 - **架構**：100% 純 Pascal 原生 DBX4 (`Data.DBXCommon`)
 - **支援平台**：Windows 32 位元 (Win32) 與 64 位元 (Win64)
 - **支援 Delphi 版本**：RAD Studio XE2 至 12 Athens、13+
@@ -68,7 +68,7 @@
 boss install github.com/Eden5Wu/dbx4odbc
 ```
 
-Boss 會將 `source/` 中的四個原生 Runtime 單元加入專案搜尋路徑；應用程式編譯與執行不需要安裝 IDE BPL。`boss.json` 的版本 `4.2026.11` 為配合 Boss 三段式版本格式，對應專案正式版本 `4.2026.11.12`，不改變 Driver 原有版號。
+Boss 會將 `source/` 中的四個原生 Runtime 單元加入專案搜尋路徑；應用程式編譯與執行不需要安裝 IDE BPL。自 `4.2611.9` 起專案改採 `4.yymm.sn` 三段式 SemVer 版號規則，使 `boss.json` 與 Driver 正式版號完全一致。
 
 **選用：IDE Data Explorer。** Boss 也會下載 `packages/DataExplorer/`，但不會自動編譯或註冊 BPL。需要 Data Explorer 的使用者，請切換至 Boss 下載的套件根目錄並執行：
 

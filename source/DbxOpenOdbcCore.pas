@@ -1,6 +1,6 @@
 {
   Delphi open source DbExpress Native DBX4 Driver for ODBC
-  Version 4.2026.11.12
+  Version 4.2611.9
 
   Copyright (c) 2001-2012 Edward Benson, Vadim V. Lopushansky
   Copyright (c) 2019-2026 Eden Wu (Native DBX4 Refactoring)
@@ -37,14 +37,6 @@ uses
   DbxOpenOdbcDialects;
 
 type
-  TSqlDateStruct = tagDATE_STRUCT;
-  PTagDateStruct = ^tagDATE_STRUCT;
-  PTagTimestampStruct = ^tagTIMESTAMP_STRUCT;
-  TSqlLen = NativeInt;
-  PSqlLen = ^TSqlLen;
-  TSqlULen = NativeUInt;
-  PSqlULen = ^TSqlULen;
-
   EOdbcError = class(TDBXError)
   private
     FSqlState: string;
@@ -364,127 +356,6 @@ function MapOdbcParamTypeToDbx(SqlType: SqlSmallint): TDBXType;
 function NormalizeOdbcTableTypes(const TableTypes: string): string;
 
 implementation
-
-const
-  odbc32_dll = 'odbc32.dll';
-
-  // Additional ODBC SQL Type Constants
-  SQL_WCHAR         = -8;
-  SQL_WVARCHAR      = -9;
-  SQL_WLONGVARCHAR  = -10;
-  SQL_GUID          = -11;
-  SQL_SS_VARIANT    = -150;
-  SQL_SS_XML        = -152;
-  SQL_SS_TIME2      = -154;
-
-  SQL_DESC_UNSIGNED = 8;
-  SQL_USER_NAME     = 47;
-
-  // Statement attributes for Block Row Fetching (SQLBindCol + SQL_ATTR_ROW_ARRAY_SIZE)
-  SQL_ATTR_ROW_BIND_TYPE    = 5;
-  SQL_ATTR_ROW_STATUS_PTR   = 25;
-  SQL_ATTR_ROWS_FETCHED_PTR = 26;
-  SQL_ATTR_ROW_ARRAY_SIZE   = 27;
-  SQL_BIND_BY_COLUMN        = 0;
-  SQL_ROW_ERROR             = 5;
-
-// Direct 32/64-bit safe imports from Windows odbc32.dll
-function SQLAllocHandle(HandleType: SqlSmallint; InputHandle: SqlHandle;
-  out OutputHandle: SqlHandle): SqlReturn; stdcall; external odbc32_dll;
-function SQLFreeHandle(HandleType: SqlSmallint; Handle: SqlHandle): SqlReturn; stdcall; external odbc32_dll;
-function SQLFreeStmt(StatementHandle: SqlHStmt; Option: SqlUSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLCloseCursor(StatementHandle: SqlHStmt): SqlReturn; stdcall; external odbc32_dll;
-function SQLSetStmtAttrW(StatementHandle: SqlHStmt; Attribute: SqlInteger;
-  ValuePtr: SqlPointer; StringLength: SqlInteger): SqlReturn; stdcall; external odbc32_dll;
-function SQLBindCol(StatementHandle: SqlHStmt; ColumnNumber: SqlUSmallint;
-  TargetType: SqlSmallint; TargetValuePtr: SqlPointer; BufferLength: TSqlLen;
-  StrLen_or_Ind: PSqlLen): SqlReturn; stdcall; external odbc32_dll;
-function SQLSetEnvAttr(EnvironmentHandle: SqlHEnv; Attribute: SqlInteger;
-  ValuePtr: SqlPointer; StringLength: SqlInteger): SqlReturn; stdcall; external odbc32_dll;
-function SQLDriverConnectW(ConnectionHandle: SqlHDbc; WindowHandle: SqlHWnd;
-  InConnectionString: PWideChar; StringLength1: SqlSmallint;
-  OutConnectionString: PWideChar; BufferLength: SqlSmallint;
-  out StringLength2Ptr: SqlSmallint; DriverCompletion: SqlUSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLDisconnect(ConnectionHandle: SqlHDbc): SqlReturn; stdcall; external odbc32_dll;
-function SQLSetConnectAttrW(ConnectionHandle: SqlHDbc; Attribute: SqlInteger;
-  ValuePtr: SqlPointer; StringLength: SqlInteger): SqlReturn; stdcall; external odbc32_dll;
-function SQLGetConnectAttrW(ConnectionHandle: SqlHDbc; Attribute: SqlInteger;
-  ValuePtr: SqlPointer; BufferLength: SqlInteger;
-  StringLengthPtr: PSqlInteger): SqlReturn; stdcall; external odbc32_dll;
-function SQLEndTran(HandleType: SqlSmallint; Handle: SqlHandle;
-  CompletionType: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLGetInfoW(ConnectionHandle: SqlHDbc; InfoType: SqlUSmallint;
-  InfoValuePtr: SqlPointer; BufferLength: SqlSmallint;
-  StringLengthPtr: PSqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLPrepareW(StatementHandle: SqlHStmt; StatementText: PWideChar;
-  TextLength: SqlInteger): SqlReturn; stdcall; external odbc32_dll;
-function SQLExecute(StatementHandle: SqlHStmt): SqlReturn; stdcall; external odbc32_dll;
-function SQLExecDirectW(StatementHandle: SqlHStmt; StatementText: PWideChar;
-  TextLength: SqlInteger): SqlReturn; stdcall; external odbc32_dll;
-function SQLNumResultCols(StatementHandle: SqlHStmt;
-  out ColumnCountPtr: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLRowCount(StatementHandle: SqlHStmt;
-  out RowCountPtr: TSqlLen): SqlReturn; stdcall; external odbc32_dll;
-function SQLDescribeColW(StatementHandle: SqlHStmt; ColumnNumber: SqlUSmallint;
-  ColumnName: PWideChar; BufferLength: SqlSmallint; out NameLengthPtr: SqlSmallint;
-  out DataTypePtr: SqlSmallint; out ColumnSizePtr: TSqlULen;
-  out DecimalDigitsPtr: SqlSmallint; out NullablePtr: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLFetch(StatementHandle: SqlHStmt): SqlReturn; stdcall; external odbc32_dll;
-function SQLMoreResults(StatementHandle: SqlHStmt): SqlReturn; stdcall; external odbc32_dll;
-function SQLGetData(StatementHandle: SqlHStmt; Col_or_Param_Num: SqlUSmallint;
-  TargetType: SqlSmallint; TargetValuePtr: SqlPointer; BufferLength: TSqlLen;
-  StrLen_or_IndPtr: PSqlLen): SqlReturn; stdcall; external odbc32_dll;
-function SQLBindParameter(StatementHandle: SqlHStmt; ParameterNumber: SqlUSmallint;
-  InputOutputType: SqlSmallint; ValueType: SqlSmallint; ParameterType: SqlSmallint;
-  ColumnSize: TSqlULen; DecimalDigits: SqlSmallint; ParameterValuePtr: SqlPointer;
-  BufferLength: TSqlLen; StrLen_or_IndPtr: PSqlLen): SqlReturn; stdcall; external odbc32_dll;
-function SQLNumParams(StatementHandle: SqlHStmt; ParameterCountPtr: PSqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLDescribeParam(StatementHandle: SqlHStmt; ParameterNumber: SqlUSmallint;
-  DataTypePtr: PSqlSmallint; ParameterSizePtr: PSqlULen; DecimalDigitsPtr: PSqlSmallint;
-  NullablePtr: PSqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLTablesW(StatementHandle: SqlHStmt;
-  CatalogName: PWideChar; NameLength1: SqlSmallint;
-  SchemaName: PWideChar; NameLength2: SqlSmallint;
-  TableName: PWideChar; NameLength3: SqlSmallint;
-  TableType: PWideChar; NameLength4: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLColumnsW(StatementHandle: SqlHStmt;
-  CatalogName: PWideChar; NameLength1: SqlSmallint;
-  SchemaName: PWideChar; NameLength2: SqlSmallint;
-  TableName: PWideChar; NameLength3: SqlSmallint;
-  ColumnName: PWideChar; NameLength4: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLStatisticsW(StatementHandle: SqlHStmt;
-  CatalogName: PWideChar; NameLength1: SqlSmallint;
-  SchemaName: PWideChar; NameLength2: SqlSmallint;
-  TableName: PWideChar; NameLength3: SqlSmallint;
-  Unique: SqlUSmallint; Reserved: SqlUSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLPrimaryKeysW(StatementHandle: SqlHStmt;
-  CatalogName: PWideChar; NameLength1: SqlSmallint;
-  SchemaName: PWideChar; NameLength2: SqlSmallint;
-  TableName: PWideChar; NameLength3: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLForeignKeysW(StatementHandle: SqlHStmt;
-  PKCatalogName: PWideChar; NameLength1: SqlSmallint;
-  PKSchemaName: PWideChar; NameLength2: SqlSmallint;
-  PKTableName: PWideChar; NameLength3: SqlSmallint;
-  FKCatalogName: PWideChar; NameLength4: SqlSmallint;
-  FKSchemaName: PWideChar; NameLength5: SqlSmallint;
-  FKTableName: PWideChar; NameLength6: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLProceduresW(StatementHandle: SqlHStmt;
-  CatalogName: PWideChar; NameLength1: SqlSmallint;
-  SchemaName: PWideChar; NameLength2: SqlSmallint;
-  ProcName: PWideChar; NameLength3: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLProcedureColumnsW(StatementHandle: SqlHStmt;
-  CatalogName: PWideChar; NameLength1: SqlSmallint;
-  SchemaName: PWideChar; NameLength2: SqlSmallint;
-  ProcName: PWideChar; NameLength3: SqlSmallint;
-  ColumnName: PWideChar; NameLength4: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLGetDiagRecW(HandleType: SqlSmallint; Handle: SqlHandle;
-  RecNumber: SqlSmallint; SqlState: PWideChar; out NativeErrorPtr: SqlInteger;
-  MessageText: PWideChar; BufferLength: SqlSmallint;
-  out TextLengthPtr: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
-function SQLDriversW(EnvironmentHandle: SqlHEnv; Direction: SqlUSmallint;
-  DriverDescription: PWideChar; BufferLength1: SqlSmallint;
-  out DescriptionLengthPtr: SqlSmallint; DriverAttributes: PWideChar;
-  BufferLength2: SqlSmallint; out AttributesLengthPtr: SqlSmallint): SqlReturn; stdcall; external odbc32_dll;
 
 function MapOdbcParamTypeToDbx(SqlType: SqlSmallint): TDBXType;
 begin
@@ -1793,6 +1664,7 @@ var
   NameBuf: array[0..255] of WideChar;
   NameLen: SqlSmallint;
   Ret: SqlReturn;
+  NumAttr: TSqlLen;
 begin
   ColCount := 0;
   Ret := SQLNumResultCols(FHStmt, ColCount);
@@ -1823,7 +1695,7 @@ begin
     case FColumns[i - 1].SqlType of
       SQL_TINYINT, SQL_SMALLINT, SQL_INTEGER, SQL_BIGINT:
         begin
-          var NumAttr: TSqlLen := 0;
+          NumAttr := 0;
           if OdbcSucceeded(SQLColAttributeW(FHStmt, i, SQL_DESC_UNSIGNED, nil, 0, nil, @NumAttr)) then
             FColumns[i - 1].IsUnsigned := (NumAttr = 1);
         end;
@@ -2171,7 +2043,9 @@ begin
 
     if (Ind <> SQL_NO_TOTAL) and (Ind >= 0) then
     begin
-      // Total length known upfront
+      // Intentionally add PayloadBytes to Ind even though ODBC specifies Ind as total length on the first call:
+      // guarantees TotalChars >= FirstChars against non-standard drivers reporting remaining bytes (preventing
+      // buffer overflow in the initial Move below), and excess capacity is trimmed at the end via SetLength.
       TotalChars := (PayloadBytes + Ind) div SizeOf(WideChar);
       SetLength(Cell.StrVal, TotalChars);
       Move(StackBuf[0], Cell.StrVal[1], FirstChars * SizeOf(WideChar));
@@ -2303,6 +2177,8 @@ begin
 
     if (Ind <> SQL_NO_TOTAL) and (Ind >= 0) then
     begin
+      // Intentionally add PayloadBytes to Ind (see FetchWideStringCell): guarantees TotalBytes >= FirstBytes
+      // against non-standard drivers reporting remaining bytes, and excess capacity is trimmed via SetLength.
       TotalBytes := PayloadBytes + Ind;
       SetLength(Cell.AnsiVal, TotalBytes);
       Move(StackBuf[0], Cell.AnsiVal[1], FirstBytes);

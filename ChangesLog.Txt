@@ -20,6 +20,30 @@ Upstream Project & Legacy Credits (2001-2012):
  Change Log
 =================================================================================
 
+ Version 4.2611.9 (Connection Override, Code Consolidation & SemVer Alignment) [ Eden Wu ]
+---------------------------------------------------------------------------------
+ + Version Format Alignment (Boss / SemVer 2.0.0):
+   - Adopted the 3-part `4.yymm.sn` version format (`4.2611.9`) so `boss.json`,
+     driver version constant, and release tags share the exact same version string.
+ + Data Explorer / Params Connection Override (`DbxOpenOdbcDriver.pas`):
+   - `BuildOdbcConnectionString` now overrides/replaces `Server`, `Database`, `UID`,
+     and `PWD` (including common aliases while respecting `{...}`-braced values) when
+     explicitly supplied via `HostName`, `Database` (excluding `?`), `User_Name`, or
+     `Password`.
+   - Explicit `User_Name` / `Password` automatically strips `Trusted_Connection` /
+     `Integrated Security` to switch from Windows-auth templates to SQL login; added
+     optional `OS Authentication=True` support and normalized bare DSN names early.
+   - `ResolveSqlServerConnectionProtocol` now exits early when an explicit `Driver=`
+     is not a SQL Server driver; cleaned up unused `PortPos` and empty `if` blocks.
+ + Core / API Consolidation & XE2+ Compatibility (`OdbcApi.pas`, `DbxOpenOdbcCore.pas`):
+   - Removed inline `var` in `TOdbcStatementHandle.DescribeResultColumns` for
+     Delphi XE2 - 10.2 Tokyo compatibility.
+   - Consolidated all `odbc32.dll` imports and shared ODBC types/constants into
+     `OdbcApi.pas`, eliminating duplicate declarations in `DbxOpenOdbcCore.pas`.
+ + Data Explorer Package (`DbxOpenOdbcDataExplorer.dpk`):
+   - Added `DbxOpenOdbcDialects` to `contains` so `Build.ps1` builds cleanly without
+     implicit import warnings.
+
  Version 4.2026.11.12 (Adaptive Hybrid Fetch Architecture) [ Eden Wu ]
 ---------------------------------------------------------------------------------
  + Adaptive Hybrid Fetch Architecture (ADR-001):

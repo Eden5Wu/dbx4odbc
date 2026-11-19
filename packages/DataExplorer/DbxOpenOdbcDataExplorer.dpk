@@ -15,6 +15,7 @@ requires
 
 contains
   OdbcApi in '..\..\source\OdbcApi.pas',
+  DbxOpenOdbcDialects in '..\..\source\DbxOpenOdbcDialects.pas',
   DbxOpenOdbcCore in '..\..\source\DbxOpenOdbcCore.pas',
   DbxOpenOdbcDriver in '..\..\source\DbxOpenOdbcDriver.pas',
   DbxOpenOdbcDataExplorerMetadata in 'DbxOpenOdbcDataExplorerMetadata.pas';

@@ -1,7 +1,7 @@
 {
   "name": "dbx4odbc",
   "description": "Pure Native Delphi dbExpress (DBX4) Driver for ODBC",
-  "version": "4.2026.11",
+  "version": "4.2611.9",
   "homepage": "https://github.com/Eden5Wu/dbx4odbc",
   "license": "LGPL-2.1-or-later",
   "mainsrc": "source/",

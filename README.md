@@ -10,7 +10,7 @@ Pure Native Delphi dbExpress (DBX4) Driver for ODBC (Win32 & Win64)
 
 - **Driver Name**: `DbxOpenOdbc` (or `OpenOdbc`)
 - **Product Name**: Open DBX4 ODBC Driver Remastered
-- **Version**: `4.2026.11.12`
+- **Version**: `4.2611.9`
 - **Architecture**: 100% Pure Pascal Native DBX4 (`Data.DBXCommon`)
 - **Target OS**: Windows 32-bit (Win32) & 64-bit (Win64)
 - **Supported Delphi Versions**: RAD Studio XE2 to 12 Athens, 13+
@@ -68,7 +68,7 @@ This project enforces rigorous engineering discipline, documenting key architect
 boss install github.com/Eden5Wu/dbx4odbc
 ```
 
-Boss adds the four native runtime units from `source/` to the project's source search path. No IDE BPL is required to compile or run applications. The `boss.json` version `4.2026.11` follows Boss's three-part version convention and corresponds to upstream release `4.2026.11.12`; it does not change the driver's version.
+Boss adds the four native runtime units from `source/` to the project's source search path. No IDE BPL is required to compile or run applications. Starting from `4.2611.9`, the project uses the three-part `4.yymm.sn` SemVer format so `boss.json` and the driver version match directly.
 
 **Optional: IDE Data Explorer.** Boss downloads the `packages/DataExplorer/` directory too, but it does not build or register its BPL. If you want Data Explorer support, go to the downloaded package directory and run:
 

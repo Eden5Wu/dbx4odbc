@@ -1,6 +1,6 @@
 {
   Delphi open source DbExpress Native DBX4 Driver for ODBC
-  Version 4.2026.11.12
+  Version 4.2611.9
 
   Copyright (c) 2001-2012 Edward Benson, Vadim V. Lopushansky
   Copyright (c) 2019-2026 Eden Wu (Native DBX4 Refactoring)
@@ -41,7 +41,7 @@ uses
 const
   sDbxOpenOdbcDriverName = 'DbxOpenOdbc';
   sOpenOdbcAliasName     = 'OpenOdbc';
-  sDbxOpenOdbcVersion    = '4.2026.11.12 (DBX4 Remastered)';
+  sDbxOpenOdbcVersion    = '4.2611.9 (DBX4 Remastered)';
 
 type
   TDBXOpenOdbcConnectionNative = class;
@@ -803,7 +803,7 @@ class function TDBXOpenOdbcConnectionNative.ResolveSqlServerConnectionProtocol(
 var
   Tokens: TArray<string>;
   Token, S, Key, OrigKey, Val, UpperVal: string;
-  P, SlashPos, PortPos: Integer;
+  P, SlashPos: Integer;
   HostPart, InstancePart, LocalComp, DriverVal: string;
   IsSharedMem, IsRemoteHost, IsLocalNamed, HasExplicitProtocol, IsLegacyDriver: Boolean;
   Rebuilt: TStringBuilder;
@@ -913,7 +913,6 @@ begin
           end
           else
           begin
-            PortPos := Pos(',', Val);
             // Default instance: check if local or remote
             if not IsLocalHost(Val, LocalComp) then
               IsRemoteHost := True;
@@ -921,6 +920,12 @@ begin
         end;
       end;
     end;
+
+    if (DriverVal <> '') and
+       (Pos('SQL SERVER', UpperCase(DriverVal)) = 0) and
+       (Pos('SQLNCLI', UpperCase(DriverVal)) = 0) and
+       (Pos('MSOLEDBSQL', UpperCase(DriverVal)) = 0) then
+      Exit;
 
     if DriverVal = '' then
       DriverVal := LocalEnv.ResolveSqlServerDriver('');
@@ -1036,7 +1041,8 @@ end;
 
 function TDBXOpenOdbcConnectionNative.BuildOdbcConnectionString: string;
 var
-  ConnStr, DbProp, HostProp, UserProp, PassProp, CustomProp, AppProp, ResolvedDrv: string;
+  ConnStr, DbProp, HostProp, UserProp, PassProp, CustomProp, AppProp, OsAuthProp, ResolvedDrv: string;
+  DbUsedAsConnStr: Boolean;
 
   function StripLegacyPrefix(const AStr: string): string;
   const
@@ -1251,6 +1257,91 @@ var
     end;
   end;
 
+  function UpsertConnStrKey(const AStr: string; const KeyAliases: array of string;
+    const CanonicalKey, NewValue: string; RemoveOnly: Boolean = False): string;
+  var
+    Tokens: TStringList;
+    I, StartIdx, BraceDepth, P, J: Integer;
+    Ch: Char;
+    Token, Key: string;
+    Rebuilt: TStringBuilder;
+    Matched, Replaced: Boolean;
+  begin
+    Tokens := TStringList.Create;
+    Rebuilt := TStringBuilder.Create;
+    try
+      StartIdx := 1;
+      BraceDepth := 0;
+      for I := 1 to Length(AStr) do
+      begin
+        Ch := AStr[I];
+        if Ch = '{' then
+          Inc(BraceDepth)
+        else if (Ch = '}') and (BraceDepth > 0) then
+          Dec(BraceDepth)
+        else if (Ch = ';') and (BraceDepth = 0) then
+        begin
+          Token := Trim(Copy(AStr, StartIdx, I - StartIdx));
+          if Token <> '' then
+            Tokens.Add(Token);
+          StartIdx := I + 1;
+        end;
+      end;
+      if StartIdx <= Length(AStr) then
+      begin
+        Token := Trim(Copy(AStr, StartIdx, MaxInt));
+        if Token <> '' then
+          Tokens.Add(Token);
+      end;
+
+      Replaced := False;
+      for I := 0 to Tokens.Count - 1 do
+      begin
+        Token := Tokens[I];
+        P := Pos('=', Token);
+        Matched := False;
+        if P > 0 then
+        begin
+          Key := UpperCase(Trim(Copy(Token, 1, P - 1)));
+          for J := Low(KeyAliases) to High(KeyAliases) do
+          begin
+            if Key = KeyAliases[J] then
+            begin
+              Matched := True;
+              Break;
+            end;
+          end;
+        end;
+
+        if Matched then
+        begin
+          if (not RemoveOnly) and (not Replaced) then
+          begin
+            if Rebuilt.Length > 0 then Rebuilt.Append(';');
+            Rebuilt.Append(CanonicalKey).Append('=').Append(NewValue);
+            Replaced := True;
+          end;
+        end
+        else
+        begin
+          if Rebuilt.Length > 0 then Rebuilt.Append(';');
+          Rebuilt.Append(Token);
+        end;
+      end;
+
+      if (not RemoveOnly) and (not Replaced) then
+      begin
+        if Rebuilt.Length > 0 then Rebuilt.Append(';');
+        Rebuilt.Append(CanonicalKey).Append('=').Append(NewValue);
+      end;
+
+      Result := Rebuilt.ToString;
+    finally
+      Rebuilt.Free;
+      Tokens.Free;
+    end;
+  end;
+
 begin
   ConnStr := Trim(FConnectionProperties[TDBXOpenOdbcProperties.StrConnectionString]);
   DbProp := Trim(FConnectionProperties[TDBXPropertyNames.Database]);
@@ -1264,13 +1355,21 @@ begin
   if AppProp = '' then AppProp := Trim(FConnectionProperties['Application_Name']);
   if AppProp = '' then AppProp := Trim(FConnectionProperties['Application Name']);
   if AppProp = '' then AppProp := Trim(FConnectionProperties['APP']);
+  OsAuthProp := Trim(FConnectionProperties['OS Authentication']);
 
+  DbUsedAsConnStr := False;
   if (Pos('PROVIDER=', UpperCase(DbProp)) > 0) or ((Pos('DRIVER=', UpperCase(DbProp)) > 0) and (Pos(';', DbProp) > 0)) then
-    ConnStr := DbProp
+  begin
+    ConnStr := DbProp;
+    DbUsedAsConnStr := True;
+  end
   else if (Pos('PROVIDER=', UpperCase(CustomProp)) > 0) or ((Pos('DRIVER=', UpperCase(CustomProp)) > 0) and (Pos(';', CustomProp) > 0)) then
     ConnStr := CustomProp
   else if (ConnStr = '') and (DbProp <> '') and (DbProp <> '?') and ((Pos('=', DbProp) > 0) or (Pos(';', DbProp) > 0)) then
+  begin
     ConnStr := DbProp;
+    DbUsedAsConnStr := True;
+  end;
 
   if (ConnStr = '') and (CustomProp <> '') then
     ConnStr := CustomProp;
@@ -1291,21 +1390,17 @@ begin
     ConnStr := EnsureValidSqlDriver(ConnStr);
   end;
 
-  // Append HostName / Server if specified as individual property
-  if (HostProp <> '') and (Pos('SERVER=', UpperCase(ConnStr)) = 0) and (Pos('DATA SOURCE=', UpperCase(ConnStr)) = 0) then
-  begin
-    if (ConnStr <> '') and (ConnStr[Length(ConnStr)] <> ';') then
-      ConnStr := ConnStr + ';';
-    ConnStr := ConnStr + 'Server=' + HostProp + ';';
-  end;
+  // Normalize bare DSN name before appending/overriding individual properties
+  if (ConnStr <> '') and (Pos('=', ConnStr) = 0) then
+    ConnStr := 'DSN=' + ConnStr;
 
-  // Append Database if specified as individual property
-  if (DbProp <> '') and (DbProp <> '?') and (Pos('DATABASE=', UpperCase(ConnStr)) = 0) and (Pos('INITIAL CATALOG=', UpperCase(ConnStr)) = 0) then
-  begin
-    if (ConnStr <> '') and (ConnStr[Length(ConnStr)] <> ';') then
-      ConnStr := ConnStr + ';';
-    ConnStr := ConnStr + 'Database=' + DbProp + ';';
-  end;
+  // Override/append Server when HostName / Server / Data Source is explicitly specified
+  if HostProp <> '' then
+    ConnStr := UpsertConnStrKey(ConnStr, ['SERVER', 'DATA SOURCE'], 'Server', HostProp);
+
+  // Override/append Database when specified as individual property (ignore '?' placeholder)
+  if (not DbUsedAsConnStr) and (DbProp <> '') and (DbProp <> '?') then
+    ConnStr := UpsertConnStrKey(ConnStr, ['DATABASE', 'INITIAL CATALOG'], 'Database', DbProp);
 
   // If parameters are provided but no Driver or DSN, default to installed SQL Server driver
   if (ConnStr <> '') and (Pos('DRIVER=', UpperCase(ConnStr)) = 0) and (Pos('DSN=', UpperCase(ConnStr)) = 0) and (Pos('=', ConnStr) > 0) then
@@ -1330,21 +1425,20 @@ begin
     end;
   end;
 
-  if (ConnStr <> '') and (Pos('=', ConnStr) = 0) then
-    ConnStr := 'DSN=' + ConnStr;
-
-  if (UserProp <> '') and (Pos('UID=', UpperCase(ConnStr)) = 0) and (Pos('TRUSTED_CONNECTION=', UpperCase(ConnStr)) = 0) then
+  if (UserProp <> '') or (PassProp <> '') then
   begin
-    if (ConnStr <> '') and (ConnStr[Length(ConnStr)] <> ';') then
-      ConnStr := ConnStr + ';';
-    ConnStr := ConnStr + 'UID=' + UserProp;
-  end;
-
-  if (PassProp <> '') and (Pos('PWD=', UpperCase(ConnStr)) = 0) and (Pos('TRUSTED_CONNECTION=', UpperCase(ConnStr)) = 0) then
+    // Explicit credentials override Windows authentication in the template ConnectionString
+    ConnStr := UpsertConnStrKey(ConnStr, ['TRUSTED_CONNECTION', 'INTEGRATED SECURITY'], '', '', True);
+    if UserProp <> '' then
+      ConnStr := UpsertConnStrKey(ConnStr, ['UID', 'USER ID', 'USER', 'USERNAME'], 'UID', UserProp);
+    if PassProp <> '' then
+      ConnStr := UpsertConnStrKey(ConnStr, ['PWD', 'PASSWORD'], 'PWD', PassProp);
+  end
+  else if SameText(OsAuthProp, 'True') or SameText(OsAuthProp, 'Yes') or (OsAuthProp = '1') then
   begin
-    if (ConnStr <> '') and (ConnStr[Length(ConnStr)] <> ';') then
-      ConnStr := ConnStr + ';';
-    ConnStr := ConnStr + 'PWD=' + PassProp;
+    ConnStr := UpsertConnStrKey(ConnStr, ['UID', 'USER ID', 'USER', 'USERNAME'], '', '', True);
+    ConnStr := UpsertConnStrKey(ConnStr, ['PWD', 'PASSWORD'], '', '', True);
+    ConnStr := UpsertConnStrKey(ConnStr, ['TRUSTED_CONNECTION', 'INTEGRATED SECURITY'], 'Trusted_Connection', 'yes');
   end;
 
   if (AppProp <> '') and (Pos('APP=', UpperCase(ConnStr)) = 0) and
@@ -1727,13 +1821,8 @@ begin
   Result := FStmt.FetchNext;
   if not Result then
   begin
-    // Autonomous EOF defense:
-    // Once EOF is reached, proactively close the statement cursor so that subsequent
-    // SQLMoreResults or commands on the same connection are never blocked,
-    // even if Delphi RTL fails to invoke CloseReader due to missing FLastReader assignment.
-    if FStmt <> nil then
-      // In ODBC, SQLMoreResults automatically closes the current cursor and advances to the next.
-  // FStmt.CloseCursor; should NOT be called here because SQLFreeStmt(SQL_CLOSE) discards all pending results!
+    // In ODBC, SQLMoreResults automatically closes the current cursor and advances to the next.
+    // FStmt.CloseCursor; should NOT be called here because SQLFreeStmt(SQL_CLOSE) discards all pending results!
   end;
 end;
 
@@ -1747,9 +1836,7 @@ end;
 procedure TDBXOpenOdbcReaderNative.DerivedClose;
 begin
   FreeAndNil(FByteReader);
-  // Autonomous defense on reader close: ensure cursor is closed
-  if FStmt <> nil then
-    // In ODBC, SQLMoreResults automatically closes the current cursor and advances to the next.
+  // In ODBC, SQLMoreResults automatically closes the current cursor and advances to the next.
   // FStmt.CloseCursor; should NOT be called here because SQLFreeStmt(SQL_CLOSE) discards all pending results!
 end;
 
